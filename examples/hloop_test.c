@@ -6,9 +6,9 @@
  *
  */
 
-#include "hloop.h"
 #include "hbase.h"
 #include "hlog.h"
+#include "hloop.h"
 #include "nlog.h"
 
 void mylogger(int loglevel, const char* buf, int len) {
@@ -24,15 +24,26 @@ void mylogger(int loglevel, const char* buf, int len) {
 }
 
 void on_idle(hidle_t* idle) {
-    printf("on_idle: event_id=%llu\tpriority=%d\tuserdata=%ld\n",
-        LLU(hevent_id(idle)), hevent_priority(idle), (long)(intptr_t)(hevent_userdata(idle)));
+    printf("on_idle: event_id=%llu\tpriority=%d\tuserdata=%ld\n", LLU(hevent_id(idle)),
+           hevent_priority(idle), (long)(intptr_t)(hevent_userdata(idle)));
 }
-
+#if ENABLE_PREPARE
+void on_prepare(hprepare_t* idle) {
+    printf("on_prepare: event_id=%llu\tpriority=%d\tuserdata=%ld\n", LLU(hevent_id(idle)),
+           hevent_priority(idle), (long)(intptr_t)(hevent_userdata(idle)));
+}
+#endif
+#if ENABLE_CHECK
+void on_check(hcheck_t* idle) {
+    printf("on_check: event_id=%llu\tpriority=%d\tuserdata=%ld\n", LLU(hevent_id(idle)),
+           hevent_priority(idle), (long)(intptr_t)(hevent_userdata(idle)));
+}
+#endif
 void on_timer(htimer_t* timer) {
     hloop_t* loop = hevent_loop(timer);
     printf("on_timer: event_id=%llu\tpriority=%d\tuserdata=%ld\ttime=%llus\thrtime=%lluus\n",
-        LLU(hevent_id(timer)), hevent_priority(timer), (long)(intptr_t)(hevent_userdata(timer)),
-        LLU(hloop_now(loop)), LLU(hloop_now_hrtime(loop)));
+           LLU(hevent_id(timer)), hevent_priority(timer), (long)(intptr_t)(hevent_userdata(timer)),
+           LLU(hloop_now(loop)), LLU(hloop_now_hrtime(loop)));
 }
 
 void cron_minutely(htimer_t* timer) {
@@ -61,7 +72,8 @@ void on_stdin(hio_t* io, void* buf, int readbytes) {
 }
 
 void on_custom_events(hevent_t* ev) {
-    printf("on_custom_events event_type=%d userdata=%ld\n", (int)ev->event_type, (long)(intptr_t)ev->userdata);
+    printf("on_custom_events event_type=%d userdata=%ld\n", (int)ev->event_type,
+           (long)(intptr_t)ev->userdata);
 }
 
 void on_signal(hsignal_t* sig) {
@@ -81,16 +93,32 @@ int main() {
         hevent_set_priority(idle, i);
     }
 
+// test prepare and priority
+#if ENABLE_PREPARE
+    for (int i = HEVENT_LOWEST_PRIORITY; i <= HEVENT_HIGHEST_PRIORITY; ++i) {
+        hprepare_t* prepare = hprepare_add(loop, on_prepare, 10);
+        hevent_set_priority(prepare, i);
+    }
+#endif
+
+    // test prepare and priority
+#if ENABLE_CHECK
+    for (int i = HEVENT_LOWEST_PRIORITY; i <= HEVENT_HIGHEST_PRIORITY; ++i) {
+        hcheck_t* check = hcheck_add(loop, on_check, 10);
+        hevent_set_priority(check, i);
+    }
+#endif
+
     // test timer timeout
     for (int i = 1; i <= 10; ++i) {
-        htimer_t* timer = htimer_add(loop, on_timer, i*1000, 3);
+        htimer_t* timer = htimer_add(loop, on_timer, i * 1000, 3);
         hevent_set_userdata(timer, (void*)(intptr_t)i);
     }
 
     // test timer period
-    int minute = time(NULL)%3600/60;
+    int minute = time(NULL) % 3600 / 60;
     htimer_add_period(loop, cron_minutely, -1, -1, -1, -1, -1, INFINITE);
-    htimer_add_period(loop, cron_hourly, minute+1, -1, -1, -1, -1, INFINITE);
+    htimer_add_period(loop, cron_hourly, minute + 1, -1, -1, -1, -1, INFINITE);
 
     // test signal: enter Ctrl-C to trigger
     hsignal_add(loop, on_signal, SIGINT);
@@ -115,8 +143,8 @@ int main() {
         hevent_t ev;
         memset(&ev, 0, sizeof(ev));
         ev.event_type = (hevent_type_e)(HEVENT_TYPE_CUSTOM + i);
-        ev.cb = on_custom_events;
-        ev.userdata = (void*)(intptr_t)i;
+        ev.cb         = on_custom_events;
+        ev.userdata   = (void*)(intptr_t)i;
         hloop_post_event(loop, &ev);
     }
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(hv VERSION 1.3.2)
+project(hv VERSION 1.3.3)
 
 option(BUILD_SHARED "build shared library" ON)
 option(BUILD_STATIC "build static library" ON)
@@ -28,6 +28,10 @@ option(WITH_GNUTLS  "with gnutls library"  OFF)
 option(WITH_MBEDTLS "with mbedtls library" OFF)
 
 option(WITH_KCP "compile event/kcp" OFF)
+
+
+option(ENABLE_PREPARE "loop prepare" ON)
+option(ENABLE_CHECK "loop check" ON)
 
 if(WIN32 OR MINGW)
     option(WITH_WEPOLL "compile event/wepoll -> use iocp" ON)
