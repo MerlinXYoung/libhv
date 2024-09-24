@@ -32,14 +32,16 @@
 
 static int s_gmtoff = 28800; // 8*3600
 
-struct logger_s {
+struct _logger_s {
+    int             level;
+    int             enable_color;
+    char            format[64];
+
+
     logger_handler  handler;
     unsigned int    bufsize;
     char*           buf;
 
-    int             level;
-    int             enable_color;
-    char            format[64];
 
     // for file logger
     char                filepath[256];
@@ -54,7 +56,8 @@ struct logger_s {
     hmutex_t            mutex_; // thread-safe
 };
 
-static void logger_init(logger_t* logger) {
+static void logger_init(logger_t* _logger) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->handler = NULL;
     logger->bufsize = DEFAULT_LOG_MAX_BUFSIZE;
     logger->buf = (char*)malloc(logger->bufsize);
@@ -69,7 +72,7 @@ static void logger_init(logger_t* logger) {
     logger->max_filesize = DEFAULT_LOG_MAX_FILESIZE;
     logger->remain_days = DEFAULT_LOG_REMAIN_DAYS;
     logger->enable_fsync = 1;
-    logger_set_file(logger, DEFAULT_LOG_FILE);
+    logger_set_file(_logger, DEFAULT_LOG_FILE);
     logger->last_logfile_ts = 0;
     logger->can_write_cnt = -1;
     hmutex_init(&logger->mutex_);
@@ -84,12 +87,13 @@ logger_t* logger_create() {
     int gmt_hour = gmt_tm->tm_hour;
     s_gmtoff = (local_hour - gmt_hour) * SECONDS_PER_HOUR;
 
-    logger_t* logger = (logger_t*)malloc(sizeof(logger_t));
+    logger_t* logger = (logger_t*)malloc(sizeof(struct _logger_s));
     logger_init(logger);
     return logger;
 }
 
-void logger_destroy(logger_t* logger) {
+void logger_destroy(logger_t* _logger) {
+     struct _logger_s* logger = (struct _logger_s*) _logger;
     if (logger) {
         if (logger->buf) {
             free(logger->buf);
@@ -104,15 +108,18 @@ void logger_destroy(logger_t* logger) {
     }
 }
 
-void logger_set_handler(logger_t* logger, logger_handler fn) {
+void logger_set_handler(logger_t* _logger, logger_handler fn) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->handler = fn;
 }
 
-void logger_set_level(logger_t* logger, int level) {
+void logger_set_level(logger_t* _logger, int level) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->level = level;
 }
 
-void logger_set_level_by_str(logger_t* logger, const char* szLoglevel) {
+void logger_set_level_by_str(logger_t* _logger, const char* szLoglevel) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     int loglevel = DEFAULT_LOG_LEVEL;
     if (strcmp(szLoglevel, "VERBOSE") == 0) {
         loglevel = LOG_LEVEL_VERBOSE;
@@ -134,7 +141,8 @@ void logger_set_level_by_str(logger_t* logger, const char* szLoglevel) {
     logger->level = loglevel;
 }
 
-void logger_set_format(logger_t* logger, const char* format) {
+void logger_set_format(logger_t* _logger, const char* format) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     if (format) {
         strncpy(logger->format, format, sizeof(logger->format) - 1);
     } else {
@@ -142,20 +150,24 @@ void logger_set_format(logger_t* logger, const char* format) {
     }
 }
 
-void logger_set_remain_days(logger_t* logger, int days) {
+void logger_set_remain_days(logger_t* _logger, int days) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->remain_days = days;
 }
 
-void logger_set_max_bufsize(logger_t* logger, unsigned int bufsize) {
+void logger_set_max_bufsize(logger_t* _logger, unsigned int bufsize) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->bufsize = bufsize;
     logger->buf = (char*)realloc(logger->buf, bufsize);
 }
 
-void logger_enable_color(logger_t* logger, int on) {
+void logger_enable_color(logger_t* _logger, int on) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->enable_color = on;
 }
 
-void logger_set_file(logger_t* logger, const char* filepath) {
+void logger_set_file(logger_t* _logger, const char* filepath) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     strncpy(logger->filepath, filepath, sizeof(logger->filepath) - 1);
     // remove suffix .log
     char* suffix = strrchr(logger->filepath, '.');
@@ -164,11 +176,13 @@ void logger_set_file(logger_t* logger, const char* filepath) {
     }
 }
 
-void logger_set_max_filesize(logger_t* logger, unsigned long long filesize) {
+void logger_set_max_filesize(logger_t* _logger, unsigned long long filesize) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->max_filesize = filesize;
 }
 
-void logger_set_max_filesize_by_str(logger_t* logger, const char* str) {
+void logger_set_max_filesize_by_str(logger_t* _logger, const char* str) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     int num = atoi(str);
     if (num <= 0) return;
     // 16 16M 16MB
@@ -189,11 +203,13 @@ void logger_set_max_filesize_by_str(logger_t* logger, const char* str) {
     logger->max_filesize = filesize;
 }
 
-void logger_enable_fsync(logger_t* logger, int on) {
+void logger_enable_fsync(logger_t* _logger, int on) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     logger->enable_fsync = on;
 }
 
-void logger_fsync(logger_t* logger) {
+void logger_fsync(logger_t* _logger) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     hmutex_lock(&logger->mutex_);
     if (logger->fp_) {
         fflush(logger->fp_);
@@ -201,7 +217,8 @@ void logger_fsync(logger_t* logger) {
     hmutex_unlock(&logger->mutex_);
 }
 
-const char* logger_get_cur_file(logger_t* logger) {
+const char* logger_get_cur_file(logger_t* _logger) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     return logger->cur_logfile;
 }
 
@@ -214,7 +231,8 @@ static void logfile_name(const char* filepath, time_t ts, char* buf, int len) {
             tm->tm_mday);
 }
 
-static FILE* logfile_shift(logger_t* logger) {
+static FILE* logfile_shift(logger_t* _logger) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     time_t ts_now = time(NULL);
     int interval_days = logger->last_logfile_ts == 0 ? 0 : (ts_now+s_gmtoff) / SECONDS_PER_DAY - (logger->last_logfile_ts+s_gmtoff) / SECONDS_PER_DAY;
     if (logger->fp_ == NULL || interval_days > 0) {
@@ -276,8 +294,9 @@ static FILE* logfile_shift(logger_t* logger) {
     return logger->fp_;
 }
 
-static void logfile_write(logger_t* logger, const char* buf, int len) {
-    FILE* fp = logfile_shift(logger);
+static void logfile_write(logger_t* _logger, const char* buf, int len) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
+    FILE* fp = logfile_shift(_logger);
     if (fp) {
         fwrite(buf, 1, len, fp);
         if (logger->enable_fsync) {
@@ -298,7 +317,8 @@ static int i2a(int i, char* buf, int len) {
     return len;
 }
 
-int logger_print(logger_t* logger, int level, const char* fmt, ...) {
+int logger_print(logger_t* _logger, int level, const char* fmt, ...) {
+    struct _logger_s* logger = (struct _logger_s*) _logger;
     if (level < logger->level)
         return -10;
 
@@ -427,7 +447,7 @@ int logger_print(logger_t* logger, int level, const char* fmt, ...) {
         logger->handler(level, buf, len);
     }
     else {
-        logfile_write(logger, buf, len);
+        logfile_write(_logger, buf, len);
     }
 
     hmutex_unlock(&logger->mutex_);

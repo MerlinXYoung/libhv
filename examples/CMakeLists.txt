@@ -1,5 +1,6 @@
 list(APPEND EXAMPLES
     hloop_test
+    hlog_test
     htimer_test
     pipe_test
     nc
@@ -20,6 +21,9 @@ include_directories(.. ../base ../ssl ../event ../util)
 
 add_executable(hloop_test hloop_test.c)
 target_link_libraries(hloop_test ${HV_LIBRARIES})
+
+add_executable(hlog_test hlog_test.c)
+target_link_libraries(hlog_test ${HV_LIBRARIES})
 
 add_executable(htimer_test htimer_test.c)
 target_link_libraries(htimer_test ${HV_LIBRARIES})
