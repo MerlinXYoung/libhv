@@ -30,7 +30,7 @@ option(WITH_MBEDTLS "with mbedtls library" OFF)
 option(WITH_KCP "compile event/kcp" OFF)
 
 
-option(ENABLE_PREPARE "loop prepare" ON)
+option(ENABLE_PREPARE "loop prepare" OFF)
 option(ENABLE_CHECK "loop check" ON)
 
 if(WIN32 OR MINGW)

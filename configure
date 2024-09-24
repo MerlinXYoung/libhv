@@ -28,6 +28,8 @@ modules:
 features:
   --enable-uds          enable Unix Domain Socket?      (DEFAULT: $ENABLE_UDS)
   --enable-windump      enable Windows coredump?        (DEFAULT: $ENABLE_WINDUMP)
+  --enable-prepare      enable prepare event?           (DEFAULT: $ENABLE_PREPARE)
+  --enable-check        enable check event?             (DEFAULT: $ENABLE_CHECK)
 
 dependencies:
   --with-curl           compile with curl?              (DEFAULT: $WITH_CURL)
@@ -38,6 +40,8 @@ dependencies:
 
 rudp:
   --with-kcp            compile with kcp?               (DEFAULT: $WITH_KCP)
+
+
 
 END
 }
@@ -276,6 +280,8 @@ option=WITH_OPENSSL && check_option
 option=WITH_GNUTLS && check_option
 option=WITH_MBEDTLS && check_option
 option=ENABLE_UDS && check_option
+option=ENABLE_PREPARE && check_option
+option=ENABLE_CHECK && check_option
 option=USE_MULTIMAP && check_option
 option=WITH_KCP && check_option
 
